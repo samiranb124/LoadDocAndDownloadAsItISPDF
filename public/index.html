@@ -1,0 +1,95 @@
+index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload and Display DOC/DOCX</title>
+    <style>
+        #output {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 20px;
+            width: 80%;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <h1>Upload and Display DOC/DOCX</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="document" accept=".doc, .docx">
+        <input type="submit" value="Upload">
+        <button id="btn-Download">Download As PDF</button>
+    </form>
+    <div id="output" contenteditable="true">
+        <!-- Content inside the editable div -->
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/printThis/1.15.0/printThis.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.querySelector('form');
+            const outputDiv = document.getElementById('output');
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const formData = new FormData(form);
+
+                try {
+                    const response = await fetch('/upload', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (response.ok) {
+                        const html = await response.text();
+                        outputDiv.innerHTML = html;
+                    } else {
+                        console.error('Error uploading file.');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            });
+        });
+
+        // Download PDF using printThis when the button is clicked
+        $(document).ready(function(){
+            $('#btn-Download').click(function(){
+                const pdfContent = $('#output').html(); // Get the content of the editable div
+
+                // Create a new hidden div to temporarily hold the content for PDF generation
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = pdfContent;
+                document.body.appendChild(tempDiv);
+
+                // Use printThis to generate a PDF from the content inside the tempDiv
+                $(tempDiv).printThis({
+                    header: null,  // Remove headers from the printed PDF
+                    footer: null,  // Remove footers from the printed PDF
+                    html2canvas: {
+                        scale: 2,  // Adjust scale as needed
+                    },
+                    importCSS: true,
+                    importStyle: true,
+                    pageTitle: 'Downloaded PDF',
+                    canvasId: 'pdfCanvas',
+                    afterPrint: function () {
+                        // Trigger download of the generated PDF
+                        const canvas = document.getElementById('pdfCanvas');
+                        const pdf = new jsPDF('p', 'mm', 'a4');
+                        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297);
+                        pdf.save('output.pdf');
+
+                        // Remove the temporary div
+                        document.body.removeChild(tempDiv);
+                    },
+                });
+            });
+        });
+    </script>
+</body>
+</html>
